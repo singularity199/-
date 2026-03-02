@@ -32,7 +32,7 @@ volatile uint16_t debug_CCR3 = 0;
 volatile uint16_t debug_throttle = 0;
 volatile uint32_t debug_speed_sim = 0;
 
-#define BRIDGE_SELF_TEST_ENABLE 1
+#define BRIDGE_SELF_TEST_ENABLE 0
 
 static void Bridge_All_Off(void)
 {
@@ -69,7 +69,7 @@ int main(void) {
     PWM_Timer_Start();
 
 #if BRIDGE_SELF_TEST_ENABLE
-    // 仅做桥臂硬件自检，不开启FOC ISR链路
+    // 仅做桥臂硬件自检，不开启FOC ISR链路（需要时手动置1）
     FOC.State = FOC_STATE_IDLE;
     Bridge_All_Off();
 
@@ -93,7 +93,7 @@ int main(void) {
         LL_mDelay(800);
     }
 #else
-    // 正常FOC路径（当前先保留）
+    // 正常FOC路径（当前默认）
     FOC_ADC_Start();
 
     // ALIGN 锁轴测试（先不转）
