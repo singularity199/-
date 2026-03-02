@@ -63,6 +63,13 @@ static float PID_Calc(PID_Controller_t *pid, float target, float measurement) {
     return output;
 }
 
+static float Clamp_OpenLoopVoltage(float v)
+{
+    if (v > OPENLOOP_VOLTAGE_LIMIT)  return OPENLOOP_VOLTAGE_LIMIT;
+    if (v < -OPENLOOP_VOLTAGE_LIMIT) return -OPENLOOP_VOLTAGE_LIMIT;
+    return v;
+}
+
 /**
  * @brief  开环角度发生器 (Ramp Generator)
  * @note   用于开环强拖启动
@@ -86,9 +93,11 @@ static void Angle_Generator_Update(void) {
 void FOC_Init(void) {
     // 初始化变量
     FOC.State = FOC_STATE_IDLE;
-    FOC.V_bus = 12.6f; // 默认 3S 满电，建议后续用 ADC 采集实际电压
+    FOC.V_bus = 25.0f; // 当前调试母线电压
     FOC.Ramp_Angle = 0.0f;
     FOC.Ramp_Speed = 0.0f;
+    FOC.OpenLoop_Vd = 0.3f;
+    FOC.OpenLoop_Vq = 0.0f;
     
     // 限制 PID 输出不能超过母线电压的 1/sqrt(3) (SVPWM 线性区极限)
     float max_voltage = FOC.V_bus * _ONE_DIV_SQRT3;
@@ -138,6 +147,10 @@ void FOC_Loop_ISR(void) {
         FOC.Ramp_Speed = FOC.Target_Speed; // 比如 100 rad/s
         Angle_Generator_Update();
         FOC.Theta = FOC.Ramp_Angle;
+
+        // 关键：开环不走电流PID，直接使用主程序给定的电压指令
+        FOC.V_d = Clamp_OpenLoopVoltage(FOC.OpenLoop_Vd);
+        FOC.V_q = Clamp_OpenLoopVoltage(FOC.OpenLoop_Vq);
     }
     else if (FOC.State == FOC_STATE_RUN) {
         // 闭环模式：应该使用观测器 (SMO/Flux)
@@ -146,8 +159,10 @@ void FOC_Loop_ISR(void) {
         FOC.Theta = FOC.Ramp_Angle; 
     }
     else if (FOC.State == FOC_STATE_ALIGN) {
-        // 定位模式：角度固定为 0
+        // 定位模式：角度固定为 0，并直接给固定电压做锁轴测试
         FOC.Theta = 0.0f;
+        FOC.V_d = Clamp_OpenLoopVoltage(FOC.OpenLoop_Vd);
+        FOC.V_q = Clamp_OpenLoopVoltage(FOC.OpenLoop_Vq);
     }
     else {
         // IDLE 模式，不计算
@@ -176,8 +191,10 @@ void FOC_Loop_ISR(void) {
      * -------------------------------------------------------------------------- */
     // D轴：控制磁通。通常 Id_ref = 0
     // Q轴：控制力矩。Iq_ref = 油门
-    FOC.V_d = PID_Calc(&PID_Id, FOC.Id_target, FOC.I_d);
-    FOC.V_q = PID_Calc(&PID_Iq, FOC.Iq_target, FOC.I_q);
+    if (FOC.State == FOC_STATE_RUN) {
+        FOC.V_d = PID_Calc(&PID_Id, FOC.Id_target, FOC.I_d);
+        FOC.V_q = PID_Calc(&PID_Iq, FOC.Iq_target, FOC.I_q);
+    }
 
     // [可选] 前馈解耦 / 弱磁控制在这里加入
 

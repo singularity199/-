@@ -52,10 +52,17 @@ int main(void) {
     PWM_Timer_Start();     // PWM 发波 (此时占空比为0)
     FOC_ADC_Start();  // ADC 等待 TRGO 触发
 
-    // 4. 进入简单的开环测试 (绕过 motor_control)
-    FOC.State = FOC_STATE_OPEN_LOOP;
-    FOC.Target_Speed = 50.0f; // 慢速旋转
-    FOC.Iq_target = 0.5f;     // 给一点微小的电流 (0.5A)
+    // 4. ALIGN 锁轴测试（先不转）
+    FOC.State = FOC_STATE_ALIGN;
+    FOC.Target_Speed = 0.0f;
+
+    // 固定电压指令：先从很小值开始，逐步增加
+    // 推荐: Vd=0.2 -> 0.4 -> 0.6，Vq保持0
+    FOC.OpenLoop_Vd = 0.3f;
+    FOC.OpenLoop_Vq = 0.0f; // 会在控制层被限幅到 ±OPENLOOP_VOLTAGE_LIMIT
+
+    // RUN模式才使用PID目标
+    FOC.Iq_target = 0.0f;
     FOC.Id_target = 0.0f;
 
     while (1) {
