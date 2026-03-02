@@ -24,6 +24,9 @@
 #define _SQRT3              1.73205081f
 #define _ONE_DIV_SQRT3      0.57735027f
 
+// 调试阶段开环/锁轴电压限幅 (V)
+#define OPENLOOP_VOLTAGE_LIMIT 0.6f
+
 /* ==============================================================================
  * 数据结构定义
  * ============================================================================== */
@@ -53,6 +56,10 @@ typedef struct {
     float Target_Speed;     // 目标转速 (RPM, 目前仅用于开环斜坡)
     float Ramp_Angle;       // 开环生成的虚拟角度
     float Ramp_Speed;       // 当前开环速度 (rad/s)
+
+    // 开环电压指令(不走PID，直接输出)
+    float OpenLoop_Vd;
+    float OpenLoop_Vq;
 
     // --- 2. 传感器反馈 (Input) ---
     float I_u;              // U相电流 (A)
