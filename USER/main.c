@@ -52,11 +52,16 @@ int main(void) {
     PWM_Timer_Start();     // PWM 发波 (此时占空比为0)
     FOC_ADC_Start();  // ADC 等待 TRGO 触发
 
-    // 4. 进入简单的开环测试 (绕过 motor_control)
-    FOC.State = FOC_STATE_OPEN_LOOP;
-    FOC.Target_Speed = 50.0f; // 慢速旋转
-    FOC.Iq_target = 0.5f;     // 给一点微小的电流 (0.5A)
-    FOC.Id_target = 0.0f;
+    // 4. 启动流程: 先 ALIGN，再自动切到开环
+    FOC.State = FOC_STATE_ALIGN;
+
+    // 开环目标速度(电角速度, rad/s)：从低速爬升到该值
+    FOC.Target_Speed = 20.0f;
+
+    // 若需切回开环电流环验证，把 OpenLoop_UseVq 置 0
+    // FOC.OpenLoop_UseVq = 0;
+    // FOC.Iq_target = 0.4f;
+    // FOC.Id_target = 0.0f;
 
     while (1) {
         // LED 闪烁证明系统活着

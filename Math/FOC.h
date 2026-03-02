@@ -53,6 +53,16 @@ typedef struct {
     float Target_Speed;     // 目标转速 (RPM, 目前仅用于开环斜坡)
     float Ramp_Angle;       // 开环生成的虚拟角度
     float Ramp_Speed;       // 当前开环速度 (rad/s)
+    float Ramp_Accel;       // 开环加速度 (rad/s^2)
+    float Ramp_Speed_Min;   // 开环初始速度 (rad/s)
+
+    // --- 启动流程控制 ---
+    uint32_t align_count;   // ALIGN 已执行周期计数
+    uint32_t align_cycles;  // ALIGN 目标周期数
+    uint8_t OpenLoop_UseVq; // 1: 开环固定Vq测试; 0: 开环电流环
+    float OpenLoop_Vq;      // 固定Vq测试电压 (V)
+    float Align_Vd;         // ALIGN阶段固定Vd (V)
+    float Align_Vq;         // ALIGN阶段固定Vq (V)
 
     // --- 2. 传感器反馈 (Input) ---
     float I_u;              // U相电流 (A)
