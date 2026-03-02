@@ -25,7 +25,9 @@
 #define _ONE_DIV_SQRT3      0.57735027f
 
 // 调试阶段开环/锁轴电压限幅 (V)
-#define OPENLOOP_VOLTAGE_LIMIT 0.6f
+#define OPENLOOP_VOLTAGE_LIMIT 2.0f
+#define ALIGN_STEP_TEST_ENABLE 1
+#define ALIGN_STEP_INTERVAL_MS 300
 
 /* ==============================================================================
  * 数据结构定义

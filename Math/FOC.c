@@ -96,7 +96,7 @@ void FOC_Init(void) {
     FOC.V_bus = 25.0f; // 当前调试母线电压
     FOC.Ramp_Angle = 0.0f;
     FOC.Ramp_Speed = 0.0f;
-    FOC.OpenLoop_Vd = 0.3f;
+    FOC.OpenLoop_Vd = 1.0f;
     FOC.OpenLoop_Vq = 0.0f;
     
     // 限制 PID 输出不能超过母线电压的 1/sqrt(3) (SVPWM 线性区极限)
@@ -159,8 +159,20 @@ void FOC_Loop_ISR(void) {
         FOC.Theta = FOC.Ramp_Angle; 
     }
     else if (FOC.State == FOC_STATE_ALIGN) {
-        // 定位模式：角度固定为 0，并直接给固定电压做锁轴测试
+        // 定位模式：固定电压锁轴测试
+#if ALIGN_STEP_TEST_ENABLE
+        // 诊断增强: 每隔一段时间切换一次角度，便于肉眼/手感确认是否有吸附力
+        static uint32_t align_tick = 0;
+        static uint8_t align_phase = 0;
+        align_tick++;
+        if (align_tick >= (uint32_t)(FOC_CTRL_FREQ * (ALIGN_STEP_INTERVAL_MS / 1000.0f))) {
+            align_tick = 0;
+            align_phase ^= 1u;
+        }
+        FOC.Theta = align_phase ? (_PI * 0.5f) : 0.0f;
+#else
         FOC.Theta = 0.0f;
+#endif
         FOC.V_d = Clamp_OpenLoopVoltage(FOC.OpenLoop_Vd);
         FOC.V_q = Clamp_OpenLoopVoltage(FOC.OpenLoop_Vq);
     }

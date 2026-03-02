@@ -57,8 +57,8 @@ int main(void) {
     FOC.Target_Speed = 0.0f;
 
     // 固定电压指令：先从很小值开始，逐步增加
-    // 推荐: Vd=0.2 -> 0.4 -> 0.6，Vq保持0
-    FOC.OpenLoop_Vd = 0.3f;
+    // 推荐: Vd=0.6 -> 1.0 -> 1.4，Vq保持0
+    FOC.OpenLoop_Vd = 1.0f;
     FOC.OpenLoop_Vq = 0.0f; // 会在控制层被限幅到 ±OPENLOOP_VOLTAGE_LIMIT
 
     // RUN模式才使用PID目标
