@@ -50,19 +50,13 @@ typedef struct {
 typedef struct {
     // --- 1. 状态机控制 ---
     FOC_State_Enum State;
-    float Target_Speed;     // 目标电角速度 (RPM)
-    float Ramp_Angle;       // 开环生成的虚拟角度 (rad)
-    float Ramp_Speed;       // 当前开环电角速度 (RPM)
-    float Ramp_Accel;       // 开环电角加速度 (RPM/s)
-    float Ramp_Speed_Min;   // 开环初始电角速度 (RPM)
+    float Target_Speed;     // 目标转速 (RPM, 目前仅用于开环斜坡)
+    float Ramp_Angle;       // 开环生成的虚拟角度
+    float Ramp_Speed;       // 当前开环速度 (rad/s)
 
-    // --- 启动流程控制 ---
-    uint32_t align_count;   // ALIGN 已执行周期计数
-    uint32_t align_cycles;  // ALIGN 目标周期数
-    uint8_t OpenLoop_UseVq; // 1: 开环固定Vq测试; 0: 开环电流环
-    float OpenLoop_Vq;      // 固定Vq测试电压 (V)
-    float Align_Vd;         // ALIGN阶段固定Vd (V)
-    float Align_Vq;         // ALIGN阶段固定Vq (V)
+    // 开环电压指令(不走PID，直接输出)
+    float OpenLoop_Vd;
+    float OpenLoop_Vq;
 
     // --- 2. 传感器反馈 (Input) ---
     float I_u;              // U相电流 (A)
@@ -105,6 +99,16 @@ extern FOC_Handle_t FOC;    // 核心对象
 extern PID_Controller_t PID_Id; // D轴 PID
 extern PID_Controller_t PID_Iq; // Q轴 PID
 
+/* ==============================================================================
+ * 函数声明
+ * ============================================================================== */
+void FOC_Init(void);
+void FOC_Loop_ISR(void); // 核心中断处理函数 (放在 ADC 中断里调)
+
+// 辅助函数：设置目标电流
+void FOC_Set_Target(float iq, float id);
+
+#endif /* __FOC_H */
 /* ==============================================================================
  * 函数声明
  * ============================================================================== */
