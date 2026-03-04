@@ -2,7 +2,6 @@
   ******************************************************************************
   * @file    foc.h
   * @brief   FOC 核心控制逻辑头文件
-  * @note    包含状态机定义、PID 参数、核心运算结构体
   ******************************************************************************
   */
 
@@ -18,7 +17,6 @@
 #define FOC_CTRL_FREQ       20000.0f             // 控制频率 20kHz
 #define FOC_DT              (1.0f/FOC_CTRL_FREQ) // 采样周期 50us
 
-// 数学常量
 #define _PI                 3.14159265f
 #define _2PI                6.28318530f
 #define _SQRT3              1.73205081f
@@ -26,91 +24,79 @@
 
 // 调试阶段开环/锁轴电压限幅 (V)
 #define OPENLOOP_VOLTAGE_LIMIT 2.0f
-#define ALIGN_STEP_TEST_ENABLE 1
-#define ALIGN_STEP_INTERVAL_MS 300
 
-/* ==============================================================================
- * 数据结构定义
- * ============================================================================== */
-
-// FOC 运行状态枚举
 typedef enum {
-    FOC_STATE_IDLE,         // 待机 (PWM 关闭)
-    FOC_STATE_ALIGN,        // 预定位 (固定角度通电)
-    FOC_STATE_OPEN_LOOP,    // 开环强拖 (Ramp-up)
-    FOC_STATE_RUN,          // 闭环运行 (Closed Loop)
-    FOC_STATE_FAULT         // 故障停机
+    FOC_STATE_IDLE,
+    FOC_STATE_ALIGN,
+    FOC_STATE_OPEN_LOOP,
+    FOC_STATE_RUN,
+    FOC_STATE_FAULT
 } FOC_State_Enum;
 
-// PID 控制器结构体
 typedef struct {
-    float Kp;               // 比例系数
-    float Ki;               // 积分系数
-    float integral_err;     // 积分累积误差
-    float out_limit;        // 输出限幅 (电压 V)
-    float int_limit;        // 积分限幅
+    float Kp;
+    float Ki;
+    float integral_err;
+    float out_limit;
+    float int_limit;
 } PID_Controller_t;
 
-// FOC 全局状态结构体 (God Object)
 typedef struct {
-    // --- 1. 状态机控制 ---
+    // --- 状态机 ---
     FOC_State_Enum State;
-    float Target_Speed;     // 目标转速 (RPM, 目前仅用于开环斜坡)
-    float Ramp_Angle;       // 开环生成的虚拟角度
-    float Ramp_Speed;       // 当前开环速度 (rad/s)
+    uint32_t state_counter;
 
-    // 开环电压指令(不走PID，直接输出)
+    // --- 启动流程参数 ---
+    uint8_t  startup_enable;         // 1: 自动按 IDLE->ALIGN->OPEN_LOOP 走
+    uint32_t idle_cycles;            // IDLE 保持周期数
+    uint32_t align_cycles;           // ALIGN 保持周期数
+    uint32_t openloop_cycles;        // OPEN_LOOP 保持周期数 (0=不自动切换)
+
+    // --- 开环角度发生器 ---
+    float Target_Speed;              // OPEN_LOOP 目标电角速度 (rad/s)
+    float Ramp_Angle;                // 开环角度 (rad)
+    float Ramp_Speed;                // 当前电角速度 (rad/s)
+    float OpenLoop_Accel;            // 开环加速度 (rad/s^2)
+
+    // --- 开环/定位直接电压 ---
     float OpenLoop_Vd;
     float OpenLoop_Vq;
+    float Align_Vd;
+    float Align_Vq;
 
-    // --- 2. 传感器反馈 (Input) ---
-    float I_u;              // U相电流 (A)
-    float I_v;              // V相电流 (A)
-    float I_w;              // W相电流 (A)
-    float V_bus;            // 母线电压 (V) - 暂时固定，以后用 ADC 采
+    // --- 反馈 ---
+    float I_u;
+    float I_v;
+    float I_w;
+    float V_bus;
 
-    // --- 3. 核心变换变量 (Math) ---
-    float Theta;            // 电角度 (rad) [0, 2PI]
-    float Sin_Theta;        // sin(Theta)
-    float Cos_Theta;        // cos(Theta)
-    
-    // Clarke 变换结果 (静止坐标系)
+    // --- 变换变量 ---
+    float Theta;
+    float Sin_Theta;
+    float Cos_Theta;
     float I_alpha;
     float I_beta;
-    
-    // Park 变换结果 (旋转坐标系 - 反馈值)
     float I_d;
     float I_q;
 
-    // --- 4. 控制目标 (Setpoints) ---
-    float Id_target;        // D轴目标电流 (通常为0，启动时可设为强拖电流)
-    float Iq_target;        // Q轴目标电流 (力矩/油门)
+    // --- 控制目标 ---
+    float Id_target;
+    float Iq_target;
 
-    // --- 5. 控制输出 (Output) ---
-    // PID 计算出的电压指令 (旋转坐标系)
+    // --- 输出 ---
     float V_d;
     float V_q;
-    
-    // 反 Park 变换结果 (静止坐标系)
     float V_alpha;
     float V_beta;
 
 } FOC_Handle_t;
 
-/* ==============================================================================
- * 外部变量声明
- * ============================================================================== */
-extern FOC_Handle_t FOC;    // 核心对象
-extern PID_Controller_t PID_Id; // D轴 PID
-extern PID_Controller_t PID_Iq; // Q轴 PID
+extern FOC_Handle_t FOC;
+extern PID_Controller_t PID_Id;
+extern PID_Controller_t PID_Iq;
 
-/* ==============================================================================
- * 函数声明
- * ============================================================================== */
 void FOC_Init(void);
-void FOC_Loop_ISR(void); // 核心中断处理函数 (放在 ADC 中断里调)
-
-// 辅助函数：设置目标电流
+void FOC_Loop_ISR(void);
 void FOC_Set_Target(float iq, float id);
 
 #endif /* __FOC_H */
